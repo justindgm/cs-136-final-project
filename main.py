@@ -7,69 +7,16 @@ import pprint
 import numpy as np
 import random
 import sys
-from stunaive import stuNaive
-from schnaive import schNaive
-# from stusafety import stuSafety
-# from stuprediction import stuPrediction
 
-# define a student class
-class Student:
-    def __init__(self, agent, id, quality, preferences, const):
-        self.agent = agent
-        self.id = id
-        self.quality = quality
-        self.pref = preferences
-        self.const = const
-
-class School:
-    def __init__(self, agent, id, rank, preferences, cap):
-        self.agent = agent
-        self.id = id
-        self.rank = rank
-        self.pref = preferences
-        self.cap = cap
-
-# parse the school and student agents
-def parse_agents(args):
-
-    ans = []
-    for c in args:
-        s = c.split(',')
-        if len(s) == 1:
-            ans.extend(s)
-        elif len(s) == 2:
-            name, count = s
-            ans.extend([name]*int(count))
-        else:
-            raise ValueError("Bad argument: %s\n" % c)
-
-    schools = []
-    students = []
-    for agent in ans:
-        if agent[0:3] == "stu":
-            students.append(agent)
-        if agent[0:3] == "sch":
-            schools.append(agent)
-    return schools, students
-
-# load the agent modules in
-def load_modules(agent_classes):
-
-    def load(class_name):
-
-        module_name = class_name.lower()  # by convention / fiat
-        module = __import__(module_name)
-        agent_class = module.__dict__[class_name]
-        return (class_name, agent_class)
-
-    return dict(list(map(load, agent_classes)))
+import school
+import student
+from helpers import parse_agents, load_modules
+import argparse
 
 # main system
 def main(args):
-
     # define the options parser
-    usage_msg = "??"
-    parser = OptionParser(usage=usage_msg)
+    parser = OptionParser(usage="??")
 
     # error handling for the parser
     def usage(msg):
@@ -294,4 +241,9 @@ def summary_stats(final_results, students, schools, student_list, school_list):
     return student_agent_rank
 
 if __name__ == "__main__":
-    main(sys.argv)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-b", "--student-budget", detault=10, help="Set the Mean Student Budget to an Integer")
+    parser.add_argument("-c", "--school-cap", default=50, help="Set the School Capacity to an Integer")
+    parser.add_argument("-st", "--students", nargs=3) # Naive, Safety, Prediction
+    parser.add_argument("-sc", "--schools", nargs=1) # Naive
+    main(parser.parse_args())
