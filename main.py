@@ -1,4 +1,4 @@
-from optparse import OptionParser
+from collections import defaultdict
 import copy
 import itertools
 import logging
@@ -10,80 +10,21 @@ import sys
 
 import school
 import student
-from helpers import parse_agents, load_modules
+from helpers import init_agents
 import argparse
 
 # main system
 def main(args):
-    # define the options parser
-    parser = OptionParser(usage="??")
+    # initialize student and school class instances
+    students, schools = init_agents(args)
 
-    # error handling for the parser
-    def usage(msg):
-        print("Error: %s\n" % msg)
-        parser.print_help()
-        sys.exit()
+    # run early action round
+    early_action(students, schools)
 
-    # set the parameters for the simulation
-    parser.add_option("--stu_con",
-                      dest="stu_con", default=10,
-                      help="Set the Mean Student Constraint to an Integer")
+    # run regular decision round
+    regular_decision(students, schools)
 
-    parser.add_option("--sch_cap",
-                      dest="sch_cap", default=50,
-                      help="Set the School Capacity to an Integer")
 
-    # options are the parameters of the simulation
-    (options, args) = parser.parse_args()
-
-    # schools, students are the school and student agents respectively
-    schools, students = parse_agents(args)
-
-    # load the classes
-    student_classes = load_modules(students)
-    school_classes = load_modules(schools)
-
-    # initialize each student class
-    student_list = []
-    for id, student in enumerate(students):
-
-        # set student quality to random uniform [0,1]
-        q = random.uniform(0, 1)
-
-        # set student preferences to a list of school ids
-        pref = list(range(1, len(schools) + 1))
-
-        # uniform student constraint around mean
-        const = math.floor(np.random.normal(int(options.stu_con), 0))
-        if const > len(schools) + 1:
-            const = len(schools) + 1
-        if const < 1:
-            const = 1
-
-        # create each student
-        s = Student(student, id+1, q, pref, const)
-
-        # add each student to the list
-        student_list.append(s)
-
-    # initialize each school class
-    school_list = []
-    for id, school in enumerate(schools):
-
-        # set school quality to its id
-        rank = id + 1
-
-        # set school preferences over students
-        pref = list(range(1, len(students) + 1))
-
-        # set school enrollment cap
-        cap = int(options.sch_cap)
-
-        # create each school
-        s = School(school, id + 1, rank, pref, cap)
-
-        # add each student to the list
-        school_list.append(s)
 
     # run early action round
     early_action_results, proposal_tracker = round_1(student_list, school_list, student_classes, school_classes)
@@ -95,50 +36,25 @@ def main(args):
     # run summary stats
     summary_stats(final_results, students, schools, student_list, school_list)
 
-# early action round
-def round_1(student_list, school_list, student_classes, school_classes):
+def early_action(students, schools):
+    # for each school, store the list of students who send it a proposal
+    school_proposals = [[]] * len(schools)
+    for student in students:
+        school_proposals[student.early_action()].append(student.id)
 
-    # iterate for each student in the student_list and return early action preferences
-    student_ea = {}
-    for student in student_list:
+    # iterate through the list and get acceptances/rejections
+    for school, proposals in enumerate(school_proposals):
+        accepted_students, rejected_students = schools[school].early_action(proposals)
+        for id in accepted_students:
+            students[id].accepted.append(school.id)
+        for id in rejected_students:
+            students[id].rejected.append(school.id)
 
-        # get early action reports from each student
-        s1 = student_classes[student.agent](student.id, student.quality, student.pref, student.const)
-        early_action = s1.early_action(school_list, len(student_list))
-        student_ea[student.id] = early_action
-
-    # iterate for each school in early action, return accepted students
-    proposal_tracker = {}
-    school_ea = {}
-    for school in school_list:
-
-        # iterate over proposals and filter by proposes to the given school
-        early_proposals = []
-        for student, proposal in student_ea.items():
-            if proposal == school.id:
-                early_proposals.append(student)
-
-        # keep track of early_ea proposals for later
-        proposal_tracker[school.id] = early_proposals
-
-        # get students accepted in early action
-        s1 = school_classes[school.agent](school.id, school.rank, school.pref, school.cap)
-        early_action = s1.early_action(early_proposals, len(school_list))
-        school_ea[school.id] = early_action
-
-    # append acceptance letters for each student to an overall dictionary
-    student_accepts = {}
-    for student in student_list:
-        # keep a running track of student acceptances
-        accepts_list = []
-        for school, results in school_ea.items():
-            # check if the student was accepted by each school
-            if student.id in results:
-                accepts_list.append(school)
-
-        student_accepts[student.id] = accepts_list
-
-    return student_accepts, proposal_tracker
+def regular_decision(students, schools):
+    # for each school, store the list of students who send it a proposal
+    school_proposals = [[]] * len(schools)
+    for student in students:
+        proposals = student.regular_decision()
 
 # regular decision round
 def round_2(student_list, school_list, student_classes, school_classes, early_action_results, proposal_tracker):
@@ -242,8 +158,9 @@ def summary_stats(final_results, students, schools, student_list, school_list):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-b", "--student-budget", detault=10, help="Set the Mean Student Budget to an Integer")
-    parser.add_argument("-c", "--school-cap", default=50, help="Set the School Capacity to an Integer")
+    parser.add_argument("-avb", "--mean-student-budget", detault=10, help="Set the Mean Student Budget to an Integer")
+    parser.add_argument("-mb", "--max-student-budget", detault=30, help="Set the Mean Student Budget to an Integer")
+    parser.add_argument("-avc", "--mean-school-cap", default=50, help="Set the School Capacity to an Integer")
     parser.add_argument("-st", "--students", nargs=3) # Naive, Safety, Prediction
     parser.add_argument("-sc", "--schools", nargs=1) # Naive
     main(parser.parse_args())

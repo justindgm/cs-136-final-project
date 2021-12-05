@@ -2,16 +2,19 @@ import random
 
 
 class Student:
-    def __init__(self, id, quality, preferences, const):
+    def __init__(self, id, quality, preferences, budget):
         self.id = id
         self.quality = quality
         self.pref = preferences
-        self.const = const
+        self.budget = budget
+        self.accepted = []
+        self.rejected = []
+        self.matriculated = []
 
 
 class Naive(Student):
     """Naive Student Agent"""
-    def early_action(self, school_list, students):
+    def early_action(self):
         # return the first preference for each student
         return self.preferences[0]
 

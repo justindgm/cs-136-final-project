@@ -4,34 +4,38 @@ import random
 import math
 import numpy as np
 
+def softmax(x):
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0)
 
-# parse the school and student agents
-def parse_agents(args):
-    ans = []
-    for c in args:
-        s = c.split(',')
-        if len(s) == 1:
-            ans.extend(s)
-        elif len(s) == 2:
-            name, count = s
-            ans.extend([name]*int(count))
-        else:
-            raise ValueError("Bad argument: %s\n" % c)
-    schools = []
-    students = []
-    for agent in ans:
-        if agent[0:3] == "stu":
-            students.append(agent)
-        if agent[0:3] == "sch":
-            schools.append(agent)
-    return schools, students
+def init_agents(args):
+    num_students = sum(args.students)
+    num_schools = sum(args.schools)
 
-# load the agent modules in
-def load_modules(agent_classes):
-    def load(class_name):
-        module_name = class_name.lower()  # by convention / fiat
-        module = __import__(module_name)
-        agent_class = module.__dict__[class_name]
-        return (class_name, agent_class)
-    return dict(list(map(load, agent_classes)))
+    student_ids = np.arange(num_students)
+    school_ids = np.arange(num_schools)
 
+    student_qualities = softmax(np.random.normal(size=num_students))
+    school_qualities = softmax(np.random.normal(size=num_schools))
+
+    student_preferences = [np.random.choice(school_ids, size=num_schools, replace=False, p=school_qualities) for _ in range(num_students)]
+    school_preferences = [np.random.choice(student_ids, size=num_students, replace=False, p=student_qualities) for _ in range(num_schools)]
+
+    # produces integers in the range [1, max_student_budget] with a mean of mean_student_budget.
+    student_budgets = np.random.binomial(args.max_student_budget, (args.mean_student_budget - 1)/args.max_student_budget, size=num_students) + 1
+    
+    # produces integers in the range [1, infinity) with a mean of mean_school_cap
+    school_caps = np.random.geometric(1/args.mean_school_cap, size=num_schools)
+
+    student_attributes = zip(student_ids, student_qualities, student_preferences, student_budgets)
+    school_attributes = zip(school_ids, school_qualities, school_preferences, school_caps)
+
+    students_naive = [student.Naive(*attrs) for attrs in student_attributes[0:args.students[0]]]
+    students_safety = [student.Safety(*attrs) for attrs in student_attributes[args.students[0]:args.students[1]]]
+    students_prediction = [student.Prediction(*attrs) for attrs in student_attributes[args.students[1]:args.students[2]]]
+    students = students_naive + students_safety + students_prediction
+
+    schools_naive = [school.Naive(*attrs) for attrs in school_attributes]
+    schools = schools_naive
+
+    return students, schools
