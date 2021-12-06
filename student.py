@@ -6,31 +6,31 @@ class Student:
         self.id = id
         self.quality = quality
         self.pref = preferences
+        self.pref2 = {school:rank for rank, school in enumerate(preferences)}
         self.budget = budget
         self.accepted = []
         self.rejected = []
-        self.matriculated = []
 
 
 class Naive(Student):
     """Naive Student Agent"""
     def early_action(self):
         # return the first preference for each student
-        return self.preferences[0]
+        return self.pref[0]
 
-    def regular_decision(self, school_list, students):
-        # pull early-action school
-        early_school = self.early_action(school_list, students)
-        # iterate through preferences in order
-        i = 0
-        proposals = []
-        for pref in self.preferences:
-            # if the school is below the admissions cap and not the early school
-            if pref != early_school and i < self.const:
-                proposals.append(pref)
-                i += 1
+    def regular_decision(self):
+        # fill the remainder of the student budget
+        return self.pref[1:self.budget]
 
-        return proposals
+    def matriculate(self):
+        self.accepted.sort(key=lambda x: self.pref2[x])
+        if len(self.accepted) < 1:
+            self.matriculated = None
+            self.matriculation_rank = len(self.pref) + 1
+        else:
+            self.matriculated = self.accepted[0]
+            self.matriculation_rank = self.pref2[self.matriculated]
+        return self.matriculated
 
 
 class Safety(Student):

@@ -27,8 +27,8 @@ def init_agents(args):
     # produces integers in the range [1, infinity) with a mean of mean_school_cap
     school_caps = np.random.geometric(1/args.mean_school_cap, size=num_schools)
 
-    student_attributes = zip(student_ids, student_qualities, student_preferences, student_budgets)
-    school_attributes = zip(school_ids, school_qualities, school_preferences, school_caps)
+    student_attributes = list(zip(student_ids, student_qualities, student_preferences, student_budgets))
+    school_attributes = list(zip(school_ids, school_qualities, school_preferences, school_caps))
 
     students_naive = [student.Naive(*attrs) for attrs in student_attributes[0:args.students[0]]]
     students_safety = [student.Safety(*attrs) for attrs in student_attributes[args.students[0]:args.students[1]]]
