@@ -12,6 +12,21 @@ class stuSafety:
         safety = random.randint(-3,-1)
         return self.preferences[safety]
 
-    def __repr__(self):
-        return "%s(id=%d, value=%d)" % (
-            self.__class__.__name__, self.id, self.value)
+    def regular_decision(self, school_list, students, early_action_results):
+
+        # pull early-action school
+        early_school = self.early_action(school_list, students)
+
+        # iterate through preferences in order
+        i = 0
+        proposals = []
+        for pref in self.preferences:
+
+            # if the school is below the admissions cap and not the early school
+            if pref != early_school and i < self.const:
+
+                proposals.append(pref)
+
+                i += 1
+
+        return proposals

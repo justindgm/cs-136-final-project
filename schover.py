@@ -1,8 +1,8 @@
 import numpy as np
 
-class schNaive:
+class schOver:
 
-    """Naive school agent"""
+    """Base school agent"""
 
     def __init__(self, id, rank, preferences, cap):
 
@@ -14,7 +14,6 @@ class schNaive:
 
     def early_action(self, proposals, schools, students):
 
-        # add school noise
         proposals = self.noise(proposals)
 
         # sort proposals by quality
@@ -22,7 +21,8 @@ class schNaive:
 
         # predict range of students we are looking for
         school_quality = self.cap * self.rank
-        target_quality = 1 - school_quality / students
+        target_quality = 1 - school_quality/students
+        factor = self.cap / students
 
         # loop through all proposals
         accepted = []
@@ -33,12 +33,13 @@ class schNaive:
             if prop in self.preferences:
 
                 # target specific types of students
-                if proposals[prop] > target_quality:
+                if proposals[prop] > target_quality - factor:
 
                     i += 1
 
                     # make sure you only accept students up to the cap
                     if i < self.cap + 1:
+
                         accepted.append(prop)
 
         return accepted
@@ -46,7 +47,6 @@ class schNaive:
 
     def regular_decision(self, proposals, early_propsals, schools, students):
 
-        # add school noise
         proposals = self.noise(proposals)
 
         # sort proposals by quality
@@ -55,6 +55,7 @@ class schNaive:
         # predict range of students we are looking for
         school_quality = self.cap * self.rank
         target_quality = 1 - school_quality / students
+        factor = self.cap / students
 
         # pull early action accepts
         early_accepts = len(self.early_action(early_propsals, schools, students))
@@ -71,12 +72,13 @@ class schNaive:
             if prop in self.preferences:
 
                 # target specific types of students
-                if proposals[prop] > target_quality:
+                if proposals[prop] > target_quality - factor:
 
                     i += 1
 
-                    # make sure you only accept students up to the cap
-                    if i < regular_cap + 1:
+                    # over-accept in regular decision
+                    if i < regular_cap + self.cap/students * 100:
+
                         accepted.append(prop)
 
         return accepted
@@ -86,8 +88,7 @@ class schNaive:
 
         # add school noise
         for student, quality in proposals.items():
-            noise = np.random.normal(0, .05)
+            noise = np.random.normal(0, 0.05)
             proposals[student] += noise
 
         return proposals
-
